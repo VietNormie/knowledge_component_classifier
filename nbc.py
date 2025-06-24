@@ -17,7 +17,7 @@ import unicodedata
 import json
 
 # 1. READ DATA 
-df = pd.read_csv("C:/Users/Admin/VDI/code/question_analysis/output_10/nbc_data_top_10.csv")
+df = pd.read_csv("C:/Users/Admin/VDI/code/question_analysis/input_10/nbc_data_top_10.csv")
 
 # 2. PREPROCESSING 
 

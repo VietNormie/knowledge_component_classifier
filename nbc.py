@@ -138,8 +138,8 @@ print("Best ngram_range        :", best_params["ngram_range"])
 print("Best alpha              :", best_params["alpha"])
 
 # 6. FINAL 
-X_train_full = X_train + X_val
-y_train_full = y_train + y_val 
+X_train_full = X_train 
+y_train_full = y_train
 
 vect_final = CountVectorizer(
     max_df=0.9, 

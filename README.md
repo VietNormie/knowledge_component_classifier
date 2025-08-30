@@ -1,1 +1,1 @@
-# Knowledge component classifier with Naive Bayes 
+ Implement classi cation of mathematical question content based on the Naive Bayes algorithm. 

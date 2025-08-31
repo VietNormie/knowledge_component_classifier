@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import unicodedata  
 import json
  
-df = pd.read_csv("C:\\Users\\Admin\\knowledge_component\\input_10\\nbc_data_top_10.csv")
+df = pd.read_csv("C:\\Users\\Admin\\knowledge_component_classifier\\input_10\\nbc_data_top_10.csv")
 
 # 2. PREPROCESSING 
 
@@ -40,7 +40,7 @@ def normalize_text(text):
     for ch in text:
         cat = unicodedata.category(ch)
         # Nếu bắt đầu bằng "L" (letter), hoặc digit, hoặc space - giữ; còn lại - thay " "
-        if cat.startswith("L") or ch.isdigit() or ch.isspace():
+        if cat.startswith("L") or ch.isdigit() or ch.isspace() or ch == '^':
             chars.append(ch)
         else:
             chars.append(" ")
@@ -56,12 +56,12 @@ def preprocess_html(content_html: str) -> str:
 
 df["Content_cleaned"] = df["Content"].apply(lambda h: preprocess_html(h))
 
-def extract_code(label: str) -> str:
-    # split tại " – "  
-    # Nếu chuỗi không chứa " – " thì vẫn trả về nguyên label.
-    parts = label.split("-")
-    code_part = parts[0].strip()
-    return code_part
+# def extract_code(label: str) -> str:
+#     # split tại " – "  
+#     # Nếu chuỗi không chứa " – " thì vẫn trả về nguyên label.
+#     parts = label.split("-")
+#     code_part = parts[0].strip()
+#     return code_part
 
 # df['KC'] = df['KC'].apply(extract_code) 
 
@@ -169,7 +169,7 @@ print(cm)
 
 # Export vectorizer vocabulary 
 vect_data = {
-    "vocabulary": vect_final.vocabulary_  # token → column index
+    "vocabulary": vect_final.vocabulary_  # token -> column index
 }
 with open("vectorizer.json", "w", encoding="utf-8") as f:
     json.dump(vect_data, f, ensure_ascii=False)

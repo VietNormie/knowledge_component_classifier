@@ -11,12 +11,15 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import re
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer 
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt 
 import unicodedata  
 import json
+from imblearn.over_sampling import RandomOverSampler
+from collections import Counter 
+from imblearn.over_sampling import SMOTE 
  
 df = pd.read_csv("C:\\Users\\Admin\\knowledge_component_classifier\\input_10\\nbc_data_top_10.csv")
 
@@ -56,14 +59,14 @@ def preprocess_html(content_html: str) -> str:
 
 df["Content_cleaned"] = df["Content"].apply(lambda h: preprocess_html(h))
 
-# def extract_code(label: str) -> str:
-#     # split tại " – "  
-#     # Nếu chuỗi không chứa " – " thì vẫn trả về nguyên label.
-#     parts = label.split("-")
-#     code_part = parts[0].strip()
-#     return code_part
+def extract_code(label: str) -> str:
+    # split tại " – "  
+    # Nếu chuỗi không chứa " – " thì vẫn trả về nguyên label.
+    parts = label.split("-")
+    code_part = parts[0].strip()
+    return code_part
 
-# df['KC'] = df['KC'].apply(extract_code) 
+df['KC'] = df['KC'].apply(extract_code) 
 
 # 3. EDA 
 print("====== EDA ======")
@@ -82,106 +85,71 @@ plt.ylabel("Số văn bản")
 plt.tight_layout()
 plt.show()
 
-# 4. SPLIT DATA 
-X = df["Content_cleaned"].tolist() 
-y = df["KC"].tolist()
+# 4. SPLIT DATA & UPSAMPLING 
+# X = df["Content_cleaned"].tolist() 
+# y = df["KC"].tolist()
 
-X_train_val, X_test, y_train_val, y_test = train_test_split(
-    X, y,
+X_train, X_test, y_train, y_test = train_test_split(
+    df["Content_cleaned"], df['KC'],
     test_size=0.2,
     random_state=42,
-    stratify=y
-)
-
-X_train, X_val, y_train, y_val = train_test_split(
-    X_train_val, y_train_val,
-    test_size=0.25,
-    random_state=42,
-    stratify=y_train_val
+    stratify=df['KC'] 
 )
 
 print("Kích thước các tập sau khi chia:")
 print("Train     :", len(X_train))
-print("Validation:", len(X_val))
 print("Test      :", len(X_test)) 
 
-# 5. FEATURE EXTRACTION & FINE-TUNE 
-ngram_options = [(1,1), (1,2), (1, 3)]
-alpha_options = [0.1, 1.0, 2.0]
+# 5. FEATURE EXTRACTION 
 
-best_val_acc = 0.0
-best_params = {"ngram_range": None, "alpha": None}
+vect = CountVectorizer()
+# vect = TfidfVectorizer()
+X_train_vec = vect.fit_transform(X_train)
+X_test_vec = vect.transform(X_test)
 
-for ngram in ngram_options:
-    vect = CountVectorizer(
-        max_df=0.9,
-        min_df=2,
-        ngram_range=ngram,  
-    )
-    X_train_vec = vect.fit_transform(X_train)
-    X_val_vec = vect.transform(X_val)
+print(Counter(y_train))
+    
+# ros = RandomOverSampler(sampling_strategy='not majority')
+# X_train_vec, y_train = ros.fit_resample(X_train_vec, y_train)
 
-    for alpha in alpha_options:
-        clf = MultinomialNB(alpha=alpha)
-        clf.fit(X_train_vec, y_train) 
+smote = SMOTE(sampling_strategy='not majority') 
+X_train_vec, y_train = smote.fit_resample(X_train_vec, y_train)
 
-        y_val_pred = clf.predict(X_val_vec)
-        val_acc = accuracy_score(y_val, y_val_pred)
+print(Counter(y_train))
 
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
-            best_params["ngram_range"] = ngram
-            best_params["alpha"] = alpha
+nb = MultinomialNB()
+nb.fit(X_train_vec, y_train) 
 
-print(">>> Kết quả fine-tune trên tập validation:")
-print("Best validation accuracy:", best_val_acc)
-print("Best ngram_range        :", best_params["ngram_range"])
-print("Best alpha              :", best_params["alpha"])
+y_test_pred = nb.predict(X_test_vec)
+test_acc = accuracy_score(y_test, y_test_pred)
+
+print("Kết quả trên tập test:")
+print("Test accuracy:", test_acc)
 
 # 6. FINAL 
-X_train_full = X_train 
-y_train_full = y_train
-
-vect_final = CountVectorizer(
-    max_df=0.9, 
-    min_df=2,
-    ngram_range=best_params["ngram_range"] 
-)
-
-X_train_full_vec = vect_final.fit_transform(X_train_full)
-X_test_vec = vect_final.transform(X_test)
-
-clf_final = MultinomialNB(alpha=best_params["alpha"])
-clf_final.fit(X_train_full_vec, y_train_full)
-
-y_test_pred = clf_final.predict(X_test_vec)
-
-print("=== KẾT QUẢ TRÊN TẬP TEST ===")
-print("Accuracy:", accuracy_score(y_test, y_test_pred))
-
 print("\nClassification report:")
 print(classification_report(y_test, y_test_pred))
 
-labels_ordered = clf_final.classes_  
+labels_ordered = nb.classes_  
 cm = confusion_matrix(y_test, y_test_pred, labels=labels_ordered)
 print("\nConfusion matrix (rows=actual, cols=predicted):")
 print(cm)
 
 # Export vectorizer vocabulary 
 vect_data = {
-    "vocabulary": vect_final.vocabulary_  # token -> column index
+    "vocabulary": vect.vocabulary_  # token -> column index
 }
 with open("vectorizer.json", "w", encoding="utf-8") as f:
     json.dump(vect_data, f, ensure_ascii=False)
 
 # Export classifier parameters 
-clf_data = {
-    "classes": clf_final.classes_.tolist(),               # list labels
-    "class_log_prior": clf_final.class_log_prior_.tolist(),
-    "feature_log_prob": clf_final.feature_log_prob_.tolist()  # shape (n_classes, n_features)
+nb_data = {
+    "classes": nb.classes_.tolist(),               # list labels
+    "class_log_prior": nb.class_log_prior_.tolist(),
+    "feature_log_prob": nb.feature_log_prob_.tolist()  # shape (n_classes, n_features)
 }
 with open("nbc_model.json", "w", encoding="utf-8") as f:
-    json.dump(clf_data, f, ensure_ascii=False)
+    json.dump(nb_data, f, ensure_ascii=False)
 
 
 

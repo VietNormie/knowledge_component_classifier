@@ -1,1 +1,1 @@
- Implement classication of mathematical question content based on the Naive Bayes algorithm. 
+ Implement classication of mathematical question content with Naive Bayes and Logistic Regression. 

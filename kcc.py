@@ -13,6 +13,7 @@ import re
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer 
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression 
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt 
 import unicodedata  
@@ -86,8 +87,6 @@ plt.tight_layout()
 plt.show()
 
 # 4. SPLIT DATA & UPSAMPLING 
-# X = df["Content_cleaned"].tolist() 
-# y = df["KC"].tolist()
 
 X_train, X_test, y_train, y_test = train_test_split(
     df["Content_cleaned"], df['KC'],
@@ -97,8 +96,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 print("Kích thước các tập sau khi chia:")
-print("Train     :", len(X_train))
-print("Test      :", len(X_test)) 
+print("Train:", len(X_train))
+print("Test :", len(X_test)) 
 
 # 5. FEATURE EXTRACTION 
 
@@ -117,10 +116,12 @@ X_train_vec, y_train = smote.fit_resample(X_train_vec, y_train)
 
 print(Counter(y_train))
 
-nb = MultinomialNB()
-nb.fit(X_train_vec, y_train) 
+model = MultinomialNB()
+# model = LogisticRegression() 
 
-y_test_pred = nb.predict(X_test_vec)
+model.fit(X_train_vec, y_train) 
+
+y_test_pred = model.predict(X_test_vec)
 test_acc = accuracy_score(y_test, y_test_pred)
 
 print("Kết quả trên tập test:")
@@ -130,7 +131,7 @@ print("Test accuracy:", test_acc)
 print("\nClassification report:")
 print(classification_report(y_test, y_test_pred))
 
-labels_ordered = nb.classes_  
+labels_ordered = model.classes_  
 cm = confusion_matrix(y_test, y_test_pred, labels=labels_ordered)
 print("\nConfusion matrix (rows=actual, cols=predicted):")
 print(cm)
@@ -143,13 +144,13 @@ with open("vectorizer.json", "w", encoding="utf-8") as f:
     json.dump(vect_data, f, ensure_ascii=False)
 
 # Export classifier parameters 
-nb_data = {
-    "classes": nb.classes_.tolist(),               # list labels
-    "class_log_prior": nb.class_log_prior_.tolist(),
-    "feature_log_prob": nb.feature_log_prob_.tolist()  # shape (n_classes, n_features)
+model_data = {
+    "classes": model.classes_.tolist(),               # list labels
+    "class_log_prior": model.class_log_prior_.tolist(),
+    "feature_log_prob": model.feature_log_prob_.tolist()  # shape (n_classes, n_features)
 }
 with open("nbc_model.json", "w", encoding="utf-8") as f:
-    json.dump(nb_data, f, ensure_ascii=False)
+    json.dump(model_data, f, ensure_ascii=False)
 
 
 
